@@ -60,16 +60,12 @@ public class ClientHttpRequestFactorySelector {
 		Properties properties = System.getProperties();
 		String proxyHost = properties.getProperty("http.proxyHost");
 		int proxyPort = properties.containsKey("http.proxyPort") ? Integer.valueOf(properties.getProperty("http.proxyPort")) : 80;
-		if (HTTP_COMPONENTS_AVAILABLE) {
-			return HttpComponentsClientRequestFactoryCreator.createRequestFactory(proxyHost, proxyPort);
-		} else {
-			SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-			if (proxyHost != null) {
-				requestFactory.setProxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
-			}
-			requestFactory.setBufferRequestBody(false);
-			return requestFactory;
-		}
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        if (proxyHost != null) {
+            requestFactory.setProxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
+        }
+        requestFactory.setBufferRequestBody(false);
+        return requestFactory;
 	}
 	
 	/**
@@ -81,77 +77,4 @@ public class ClientHttpRequestFactorySelector {
 		return new BufferingClientHttpRequestFactory(requestFactory);
 	}
 	
-	private static final boolean HTTP_COMPONENTS_AVAILABLE = ClassUtils.isPresent("org.apache.http.client.HttpClient", ClientHttpRequestFactory.class.getClassLoader());
-
-	public static class HttpComponentsClientRequestFactoryCreator {
-		
-		private static boolean isAllTrust = false;
-		
-		public static ClientHttpRequestFactory createRequestFactory(String proxyHost, int proxyPort) {
-			
-			HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory() {
-				@Override
-				protected HttpContext createHttpContext(HttpMethod httpMethod, URI uri) {
-					HttpClientContext context = new HttpClientContext();
-					context.setAttribute("http.protocol.expect-continue", false);
-					return context;
-				}
-			};
-			
-			if (proxyHost != null) {
-				HttpHost proxy = new HttpHost(proxyHost, proxyPort);
-				CloseableHttpClient httpClient = isAllTrust ? getAllTrustClient(proxy) : getClient(proxy);
-				requestFactory.setHttpClient(httpClient);
-			}
-
-			requestFactory.setBufferRequestBody(false);
-			return requestFactory;
-			
-		}
-
-		private static CloseableHttpClient getClient(HttpHost proxy) {
-			return HttpClients.custom()
-					.setProxy(proxy)
-					.build();
-		}
-
-		private static CloseableHttpClient getAllTrustClient(HttpHost proxy) {
-			return HttpClients.custom()
-					.setProxy(proxy)
-					.setSslcontext(getSSLContext())
-					.setHostnameVerifier(SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER)
-					.build();
-		}
-
-		private static SSLContext getSSLContext() {
-			try {
-				KeyStore trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-				TrustStrategy allTrust = new TrustStrategy() {
-					@Override
-					public boolean isTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-						return true;
-					}
-				};
-				return SSLContexts.custom().useSSL().loadTrustMaterial(trustStore, allTrust).build();
-			} catch (KeyStoreException e) {
-				e.printStackTrace();
-			} catch (KeyManagementException e) {
-				e.printStackTrace();
-			} catch (NoSuchAlgorithmException e) {
-				e.printStackTrace();
-			}
-			return null;
-		}
-		
-	}
-
-	/**
-	 * Trust all SSL certificates.
-	 * For use when using {@link HttpComponentsClientHttpRequestFactory} in a test environment. Not recommended for general use.
-	 * @param isAllTrust if true, all certificates will be trusted.
-	 */
-	public static void setAllTrust(boolean isAllTrust) {
-		HttpComponentsClientRequestFactoryCreator.isAllTrust = isAllTrust;
-	}
-
 }
