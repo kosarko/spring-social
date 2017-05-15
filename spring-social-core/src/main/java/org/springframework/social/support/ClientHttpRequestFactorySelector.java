@@ -67,6 +67,7 @@ public class ClientHttpRequestFactorySelector {
 			if (proxyHost != null) {
 				requestFactory.setProxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort)));
 			}
+			requestFactory.setBufferRequestBody(false);
 			return requestFactory;
 		}
 	}
@@ -102,7 +103,8 @@ public class ClientHttpRequestFactorySelector {
 				CloseableHttpClient httpClient = isAllTrust ? getAllTrustClient(proxy) : getClient(proxy);
 				requestFactory.setHttpClient(httpClient);
 			}
-			
+
+			requestFactory.setBufferRequestBody(false);
 			return requestFactory;
 			
 		}
